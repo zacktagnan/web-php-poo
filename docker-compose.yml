@@ -1,0 +1,149 @@
+# version: '3.8'
+
+services:
+  app:
+    build:
+      # context: ${PWD}
+      context: ../.docker/img/php
+      dockerfile: Dockerfile
+    image: ${COMPOSE_PROJECT_NAME}_img
+    container_name: ${COMPOSE_PROJECT_NAME}_cont_app
+    tty: true
+    environment:
+      SERVICE_NAME: app
+      SERVICE_TAGS: dev
+    # working_dir: /var/www/html
+    volumes:
+      - ./:/var/www/html
+      - ../.docker/vol/php/php.ini:/usr/local/etc/php/php.ini
+    ports:
+      # - 5000:80
+      - '${APP_URL_PORT}:80'
+    networks:
+      - net
+    extra_hosts:
+      - host.docker.internal:host-gateway
+
+  # Composer
+  composer_php:
+    image: composer
+    container_name: ${COMPOSE_PROJECT_NAME}_cont_composer
+    working_dir: /app
+    volumes:
+      - ./:/app
+    # network_mode: host
+    networks:
+      - net
+
+  # NodeJS
+  node_js:
+    image: node:18.16.1-slim
+    container_name: ${COMPOSE_PROJECT_NAME}_cont_node_js
+    working_dir: /var/www/html
+    volumes:
+      - ./:/var/www/html
+    # network_mode: host
+    networks:
+      - net
+
+  # MySQL
+  db_server:
+    image: mysql:5.7.30
+    container_name: ${COMPOSE_PROJECT_NAME}_cont_db_server
+    #Característica recomendable de habilitar en PROD
+    #-------------------------------------------------
+    # restart: unless-stopped
+    #-------------------------------------------------
+    tty: true
+    ports:
+      #si no se tiene instalado MySQL localmente en este puerto
+      #y/o no se va a ejecutar localmente
+      #- '3306:3306'
+      # - '6606:3306'
+      - '${DB_PORT}:3306'
+      # ASÍ NO
+      # - ${DB_PORT}':3306'
+      # env_file: mysql.env
+    environment:
+      # MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_ROOT_PASSWORD_FILE: /run/secrets/db_root_password
+      MYSQL_DATABASE: db_${DB_COMMON_DATA}
+      MYSQL_USER: usu_${DB_COMMON_DATA}
+      # MYSQL_PASSWORD: xxxx_${DB_COMMON_DATA}
+      MYSQL_PASSWORD_FILE: /run/secrets/db_user_password
+    secrets:
+      - db_root_password
+      - db_user_password
+    volumes:
+      - ../.docker/vol/mysql/my.cnf:/etc/mysql/my.cnf
+      - ../.docker/vol/mysql/data:/var/lib/mysql/
+    # network_mode: host
+    networks:
+      - net
+
+  # phpMyAdmin
+  db_admin:
+    depends_on:
+      - db_server
+    container_name: ${COMPOSE_PROJECT_NAME}_cont_db_admin
+    image: phpmyadmin/phpmyadmin
+    #Característica recomendable de habilitar en PROD
+    #-------------------------------------------------
+    # restart: always
+    #-------------------------------------------------
+    ports:
+      - '8004:80'
+    # env_file: phpmyadmin.env
+    environment:
+      PMA_HOST: db_server
+    #--------------------------------------------------
+    # No activar el VOL de CONF si no se dispone de
+    # una copia del conf.inc.php en local
+    volumes:
+      - ../.docker/vol/phpmyadmin/conf:/etc/phpmyadmin
+      #Este volumen se desactiva porque, sin saber el por qué,
+      #en este caso, de primeras no se traspasa el contenido a dónde no existe
+      #sino que la parte del contenedor se termina vaciando por estar vacía
+      #la parte local del volumen correspondiente
+      ####- ./.docker/vol/phpmyadmin/web:/var/www/html
+    networks:
+      - net
+
+  # MailHog
+  mailhog_server:
+    image: mailhog/mailhog
+    container_name: ${COMPOSE_PROJECT_NAME}_cont_mailhog_server
+    tty: true
+    ports:
+      - '1025:1025'
+      - '8005:8025'
+    #restart: always
+    restart: on-failure
+    networks:
+      - net
+
+  # MailDev
+  maildev_server:
+    image: maildev/maildev
+    container_name: ${COMPOSE_PROJECT_NAME}_cont_maildev_server
+    tty: true
+
+    #volumes:
+
+    ports:
+      - '1030:1025'
+      - '8006:1080'
+    #restart: always
+    restart: on-failure
+    networks:
+      - net
+
+secrets:
+  db_root_password:
+    file: ../.docker/secrets/db_root_password.txt
+  db_user_password:
+    file: ../.docker/secrets/db_user_password.txt
+
+#Redes
+networks:
+  net:
