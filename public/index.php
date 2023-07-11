@@ -6,6 +6,15 @@
     <title>Aloha!!</title>
 </head>
 <body>
+<?php
+use Libs\BreadCrumbs;
+
+include '../Libs/BreadCrumbs.php';
+$crumbs = new BreadCrumbs();
+$crumbs->add('/link', 'Sección');
+$crumbs->show();
+?>
+
     <h1>Aloha!!</h1>
     <p>&copy; <?php echo date('Y'); ?></p>
 </body>
