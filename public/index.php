@@ -13,6 +13,10 @@ use Libs\BreadCrumbs;
 use Carbon\Carbon;
 use Libs\Dates;
 
+use League\Plates\Engine;
+
+$templates = new Engine('../views');
+
 $crumbs = new BreadCrumbs();
 $crumbs->add('/link', 'Sección');
 $crumbs->show();
@@ -30,6 +34,11 @@ $carbonYear = $date->format('Y');
     <p>
         <?= 'Mañana será <strong>' . Dates::longDate(Dates::tomorrow()) . '</strong>.'; ?>
     </p>
+
+
+<?= $templates->render('template-test', [
+  'titleH2' => 'Este es el Título H2',
+]); ?>
 
     <p>&copy; <?php echo date('Y'); ?></p>
     <p>&copy; <?php echo $carbonYear . ' con CARBON'; ?></p>
